@@ -710,10 +710,45 @@ function Safeguarding() {
 }
 
 /* ---------- CONTACT ---------- */
+// Bookings are emailed to clionotes.academy@gmail.com via Formspree.
+const FORMSPREE_ENDPOINT = "https://formspree.io/f/mvzjnldd";
+
 function Contact() {
   const [f, setF] = useState({ name: "", email: "", role: "Parent", year: "Lower Sixth", school: "", topics: "", concerns: "", time: "" });
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  const submit = async () => {
+    if (!f.name || !f.email) {
+      setStatus("error");
+      return;
+    }
+    setStatus("sending");
+    try {
+      const res = await fetch(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          _subject: `Clio Academy consultation request — ${f.name}`,
+          name: f.name,
+          email: f.email,
+          role: f.role,
+          year_group: f.year,
+          school: f.school,
+          ocr_topics: f.topics,
+          concerns: f.concerns,
+          preferred_time: f.time,
+        }),
+      });
+      if (res.ok) {
+        setStatus("sent");
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
+  };
 
   return (
     <div className="page-enter" key="contact">
@@ -741,11 +776,11 @@ function Contact() {
             </div>
 
             <div className="form">
-              {sent ? (
+              {status === "sent" ? (
                 <div className="sent">
                   <h3 className="serif">Thank you</h3>
-                  <p className="muted" style={{ margin: 0 }}>Your details have been captured. Once the booking system is connected, enquiries will arrive by email and you'll be offered consultation times.</p>
-                  <div style={{ marginTop: 18 }}><Btn variant="ghost" onClick={() => setSent(false)}>Send another</Btn></div>
+                  <p className="muted" style={{ margin: 0 }}>Your enquiry has been sent. We'll reply by email to arrange a consultation time.</p>
+                  <div style={{ marginTop: 18 }}><Btn variant="ghost" onClick={() => setStatus("idle")}>Send another</Btn></div>
                 </div>
               ) : (
                 <div>
@@ -765,8 +800,15 @@ function Contact() {
                   <div className="field"><label>OCR topics studied</label><input value={f.topics} onChange={set("topics")} placeholder="e.g. Athens · The Julio-Claudians" /></div>
                   <div className="field"><label>Current concerns / goals</label><textarea value={f.concerns} onChange={set("concerns")} placeholder="What would you like to improve?" /></div>
                   <div className="field"><label>Preferred session time</label><input value={f.time} onChange={set("time")} placeholder="e.g. weekday evenings" /></div>
-                  <button className="btn btn--gold" style={{ width: "100%", justifyContent: "center" }} onClick={() => setSent(true)}>Request a consultation<ArrowRight /></button>
-                  <p className="integ">This preview stores nothing. Connect Calendly, Stripe, or an email handler before launch.</p>
+                  <button className="btn btn--gold" style={{ width: "100%", justifyContent: "center" }} onClick={submit} disabled={status === "sending"}>
+                    {status === "sending" ? "Sending…" : "Request a consultation"}<ArrowRight />
+                  </button>
+                  {status === "error" && (
+                    <p className="integ" style={{ color: "var(--gold-deep)" }}>
+                      Please fill in at least your name and email, or the form isn't connected yet — see README.md.
+                    </p>
+                  )}
+                  <p className="integ">Sent directly to clionotes.academy@gmail.com.</p>
                 </div>
               )}
             </div>
